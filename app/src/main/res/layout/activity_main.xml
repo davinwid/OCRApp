@@ -10,31 +10,31 @@
         android:id="@+id/uploadImageTextView"
         android:layout_width="180dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="70dp"
         android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp"
-        android:layout_marginTop="8dp"
-        android:text="Please select an image to process"
+        android:text="@string/please_select_an_image_to_process"
         android:textAlignment="center"
-        android:textSize="20dp"
+        android:textSize="20sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintHorizontal_bias="0.497"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imagePreview"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="8dp"
+        app:layout_constraintVertical_bias="1.0" />
 
     <ImageView
         android:id="@+id/imagePreview"
-        android:layout_width="355dp"
-        android:layout_height="365dp"
+        android:layout_width="361dp"
+        android:layout_height="310dp"
         android:layout_marginLeft="8dp"
         android:layout_marginRight="8dp"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:srcCompat="?attr/actionBarItemBackground"
-        android:layout_marginTop="32dp"
+        app:layout_constraintHorizontal_bias="0.571"
+        android:layout_marginTop="8dp"
         app:layout_constraintTop_toBottomOf="@+id/recentSearches" />
 
     <Button
@@ -42,7 +42,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
-        android:text="Recent Searches >"
+        android:text="@string/recent_searches"
         app:layout_constraintTop_toTopOf="parent"
         android:layout_marginRight="0dp"
         app:layout_constraintRight_toRightOf="@+id/imagePreview"
@@ -55,15 +55,14 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Sign Out"
-        android:layout_marginTop="20dp"
-        app:layout_constraintTop_toBottomOf="@+id/uploadImageTextView"
         app:layout_constraintRight_toLeftOf="@+id/galleryImageButton"
         android:layout_marginRight="8dp"
         app:layout_constraintLeft_toRightOf="@+id/cameraButton"
         android:layout_marginLeft="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintVertical_bias="0.0" />
+        app:layout_constraintBottom_toBottomOf="@+id/cameraButton"
+        android:layout_marginBottom="3dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@+id/uploadImageTextView" />
 
     <TextView
         android:id="@+id/welcomeMessage"
@@ -86,7 +85,6 @@
         android:layout_marginBottom="10dp"
         android:layout_marginLeft="16dp"
         android:layout_marginRight="8dp"
-        android:layout_marginTop="0dp"
         android:clickable="true"
         app:backgroundTint="@color/colorPrimaryDark"
         app:fabSize="mini"
@@ -94,7 +92,6 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/uploadImageTextView"
         app:srcCompat="@android:drawable/ic_menu_camera" />
 
     <android.support.design.widget.FloatingActionButton
@@ -110,8 +107,6 @@
         android:layout_marginRight="16dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintHorizontal_bias="1.0"
-        android:layout_marginTop="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/uploadImageTextView"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_marginBottom="10dp" />
 

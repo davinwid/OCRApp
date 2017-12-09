@@ -10,6 +10,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -45,14 +46,15 @@ public class MainActivity extends AppCompatActivity {
     final private int REQUEST_IMAGE_CAPTURE = 1;
     final private int RESULT_LOAD_IMAGE = 2;
 
-    private ArrayList<String> imagePathArray = new ArrayList<String>();
+    private ArrayList<String> imagePathArray = new ArrayList<>();
     private String filename;
 
-    private FirebaseDatabase database = FirebaseDatabase.getInstance();
-    private FirebaseAuth databaseAuth = FirebaseAuth.getInstance();
+    private FirebaseDatabase database;
+    private FirebaseAuth databaseAuth;
     private FirebaseAuth.AuthStateListener databaseAuthListener;
-    private StorageReference imageStorage = FirebaseStorage.getInstance().getReference();
-    private DatabaseReference searchResultRef = database.getReference("User's Search Results");
+    private DatabaseReference userRef;
+    private UserProfile signedInUser;
+    private String userID;
 
 
     @Override
@@ -68,14 +70,18 @@ public class MainActivity extends AppCompatActivity {
         recentSearchesButton = (Button) findViewById(R.id.recentSearches);
         signOutButton = (Button) findViewById(R.id.signOutButton);
 
-        /*recentSearchesButton.setOnClickListener(new View.OnClickListener() {
+        databaseAuth = FirebaseAuth.getInstance();
+        database = FirebaseDatabase.getInstance();
+        userRef = database.getReference();
+        FirebaseUser user = databaseAuth.getCurrentUser();
+        userID = user.getUid();
+
+        recentSearchesButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final Context context = v.getContext();
-                Intent scrollingIntent = new Intent(context, RecyclerViewActivity.class);
-                context.startActivity(scrollingIntent);*//*
+                startActivity(new Intent());
             }
-        });*/
+        });
 
         uploadImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -91,19 +97,39 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+
         databaseAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
+                FirebaseUser user = databaseAuth.getCurrentUser();
                 if (user != null) {
-                    // User is signed in
+                    makeToastText("Signed in as " + user.getEmail());
                 } else {
                     // User is signed out
-                    makeToastText("Successfully signed out!");
-                    startActivity(new Intent (MainActivity.this, LogInActivity.class));
+                    startActivity(new Intent(MainActivity.this, LogInActivity.class));
                 }
             }
         };
+
+        userRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot ds : dataSnapshot.getChildren()) {
+                    signedInUser = new UserProfile();
+                    signedInUser.setName(ds.child(userID).getValue(UserProfile.class).getName());
+                    signedInUser.setUserName(ds.child(userID).getValue(UserProfile.class).getUserName());
+                    signedInUser.setEmail(ds.child(userID).getValue(UserProfile.class).getEmail());
+
+                    welcomeTextView.setText("Welcome " + signedInUser.getUserName() + "!");
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+
 
         signOutButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -111,28 +137,6 @@ public class MainActivity extends AppCompatActivity {
                 databaseAuth.signOut();
             }
         });
-
-        // Read from the database
-        searchResultRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                // This method is called once with the initial value and again
-                // whenever data at this location is updated.
-                String value = dataSnapshot.getValue(String.class);
-            }
-
-            @Override
-            public void onCancelled(DatabaseError error) {
-                // Failed to read value
-            }
-        });
-    }
-
-    /**
-     * Initialize each of the button, views and any other components in the application
-     */
-    private void initializeScreenComponents() {
-
     }
 
     /**
@@ -198,8 +202,7 @@ public class MainActivity extends AppCompatActivity {
                 filename = saveImage(imageNew);
                 imagePathArray.add(filename);
                 imagePreview.setImageBitmap(imageNew);
-                uploadTextView.setText("Click here to search using this image!");
-                uploadTextView.setTextSize(15);
+                imageProcessing(requestCode);
                 break;
             case (RESULT_LOAD_IMAGE):
                 // if the request is to open the gallery and choose picture to upload
@@ -207,8 +210,7 @@ public class MainActivity extends AppCompatActivity {
                 filename = imageUri.getPath();
                 imagePathArray.add(filename);
                 imagePreview.setImageURI(imageUri);
-                uploadTextView.setText("Click here to search using this image!");
-                uploadTextView.setTextSize(15);
+                imageProcessing(requestCode);
                 break;
         }
     }
@@ -219,6 +221,8 @@ public class MainActivity extends AppCompatActivity {
      * @param resultCode the code that differs the image treatment
      */
     private void imageProcessing(final int resultCode) {
+        uploadTextView.setText("Click here to search using this image!");
+        uploadTextView.setTextSize(15);
         uploadTextView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -230,23 +234,7 @@ public class MainActivity extends AppCompatActivity {
                 String userId = user.getUid();
 
                 Uri uri = Uri.fromFile(new File(filename));
-                StorageReference storageReference = imageStorage.child("images/users/" + userId + "/asdf.jpg");
-                storageReference.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        makeToastText("Upload Success");
-                        progressDialog.dismiss();
-                    }
-                }).addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        makeToastText("Upload Failed");
-                        progressDialog.dismiss();
-                    }
-                })
-                ;
             }
-
         });
     }
 
@@ -302,9 +290,6 @@ public class MainActivity extends AppCompatActivity {
     public void makeToastText(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
-
-
 }
-//create searchResult object using image, search result and url link then add to array
 
 

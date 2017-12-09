@@ -1,11 +1,12 @@
 package edu.illinois.finalproject;
 
 import android.app.ProgressDialog;
-import android.content.Context;
 import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.LoginFilter;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -15,21 +16,40 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText emailSignUp, passwordSignUp, repeatPassword, userId, nameField;
+    private EditText emailSignUp, passwordSignUp,
+            repeatPassword, userId, nameField;
     private Button registerButton;
     private ProgressDialog progressDialog;
+    private FirebaseDatabase database;
     private FirebaseAuth firebaseAuth;
-    private final Context context = this;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register_user);
 
-        initializeScreenComponents();
+        emailSignUp = (EditText) findViewById(R.id.emailSignUp);
+        passwordSignUp = (EditText) findViewById(R.id.passwordSignUp);
+        repeatPassword = (EditText) findViewById(R.id.repeatPassword);
+        registerButton = (Button) findViewById(R.id.registerButton);
+        userId = (EditText) findViewById(R.id.userId);
+        nameField = (EditText) findViewById(R.id.nameField);
+        firebaseAuth = FirebaseAuth.getInstance();
+        progressDialog = new ProgressDialog(this);
+        database = FirebaseDatabase.getInstance();
+
         registerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -43,15 +63,15 @@ public class RegisterActivity extends AppCompatActivity {
      */
     private void registerUser() {
         // passwords are not the same
-        String name = userId.getText().toString().trim();
-        String email = emailSignUp.getText().toString().trim();
+        final String userName = userId.getText().toString().trim();
+        final String email = emailSignUp.getText().toString().trim();
         String password = passwordSignUp.getText().toString();
         String repeatPasswordText = repeatPassword.getText().toString();
-        String nameText = nameField.getText().toString();
+        final String nameText = nameField.getText().toString();
 
         // fields are all filled and registration is ready
         if (email.equals("") || password.equals("") || nameText.equals("")
-                || repeatPasswordText.equals("") || name.equals("")) {
+                || repeatPasswordText.equals("") || userName.equals("")) {
             makeToastText("Please make sure to fill in the descriptions before continuing!");
             return;
         }
@@ -61,8 +81,19 @@ public class RegisterActivity extends AppCompatActivity {
             makeToastText("Please make sure that both password fields are the same");
             return;
         }
+        addDataToDatabase(userName, email, password, nameText);
+    }
 
-
+    /**
+     * Add the data of the user and register it through the Firebase as well as local data
+     *
+     * @param userName unique userID
+     * @param email    email of the registered user
+     * @param password user's password
+     * @param nameText name set by the user.
+     */
+    private void addDataToDatabase(final String userName, final String email,
+                                   String password, final String nameText) {
         // notify users whether the process is being completed
         progressDialog.setMessage("Registering user...");
         progressDialog.show();
@@ -73,42 +104,35 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
                         makeToastText("Successfully Registered!");
-                        if (!task.isSuccessful()){
+                        registerButton.setClickable(false);
+
+                        // add new user info to database
+                        DatabaseReference userRef = database.getReference("users");
+
+                        // makes a new map based on the user profile
+                        UserProfile newUser = new UserProfile(nameText, userName, email, null);
+
+                        // adds the new user to database and local array
+                        userRef.child(firebaseAuth.getCurrentUser().getUid()).setValue(newUser);
+
+                        // signal the end of the process
+                        progressDialog.hide();
+
+                        if (!task.isSuccessful()) {
                             makeToastText("Registration failed, please try again!");
                         }
                     }
                 });
-        progressDialog.hide();
-
-        /*Intent mainActivity = new Intent(context, LogInActivity.class);
-        context.startActivity(mainActivity);*/
-        //TODO add email, user id and name to the firebase.
-
-
+        startActivity(new Intent(RegisterActivity.this, LogInActivity.class));
     }
 
-    /**
-     * Make sure that every screen component is associated with the right values.
-     */
-    private void initializeScreenComponents() {
-        emailSignUp = (EditText) findViewById(R.id.emailSignUp);
-        passwordSignUp = (EditText) findViewById(R.id.passwordSignUp);
-        repeatPassword = (EditText) findViewById(R.id.repeatPassword);
-        registerButton = (Button) findViewById(R.id.registerButton);
-        userId = (EditText) findViewById(R.id.userId);
-        nameField = (EditText) findViewById(R.id.nameField);
-        firebaseAuth = FirebaseAuth.getInstance();
-        progressDialog = new ProgressDialog(this);
-    }
 
     /**
      * Make a toast for the given message
-     *
      * @param message value of string to make the toast with
      */
     public void makeToastText(String message) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
-
 
 }

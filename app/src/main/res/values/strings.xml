@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">Reverse Image Search App</string>
+    <string name="app_name">Eye see I scan</string>
+    <string name="please_select_an_image_to_process">Please select an image to process</string>
+    <string name="recent_searches"><![CDATA[Recent Searches >]]></string>
 </resources>

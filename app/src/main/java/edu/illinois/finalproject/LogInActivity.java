@@ -6,6 +6,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,9 +24,6 @@ public class LogInActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthListener;
     private EditText emailAuth, passwordAuth;
     private Button signInButton, registerButton;
-    private final Context context = this;
-
-    private static final String TAG = "MyActivity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,11 +46,6 @@ public class LogInActivity extends AppCompatActivity {
                     // clear out the credentials
                     emailAuth.setText("");
                     passwordAuth.setText("");
-                    makeToastText("Signed in as: " + user.getEmail());
-                    startActivity(new Intent (LogInActivity.this, MainActivity.class));
-                } else {
-                    // User is signed out
-                    makeToastText("Successfully signed out!");
                 }
             }
         };
@@ -67,9 +60,8 @@ public class LogInActivity extends AppCompatActivity {
         registerButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                final Context context = v.getContext();
-                Intent signUpActivity = new Intent(context, RegisterActivity.class);
-                context.startActivity(signUpActivity);
+                Intent signUpActivity = new Intent(LogInActivity.this, RegisterActivity.class);
+                startActivity(signUpActivity);
             }
         });
     }
@@ -90,6 +82,7 @@ public class LogInActivity extends AppCompatActivity {
                     // If sign in fails, display a message to the user. If sign in succeeds
                     // the auth state listener will be notified and logic to handle the
                     // signed in user can be handled in the listener.
+                    startActivity(new Intent (LogInActivity.this, MainActivity.class));
                     if (!task.isSuccessful()) {
                         makeToastText("Sign In failed please try again!");
                     }
