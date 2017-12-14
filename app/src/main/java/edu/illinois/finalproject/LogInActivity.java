@@ -82,8 +82,10 @@ public class LogInActivity extends AppCompatActivity {
                     // If sign in fails, display a message to the user. If sign in succeeds
                     // the auth state listener will be notified and logic to handle the
                     // signed in user can be handled in the listener.
-                    startActivity(new Intent (LogInActivity.this, MainActivity.class));
-                    if (!task.isSuccessful()) {
+                    if (task.isSuccessful()) {
+                        startActivity(new Intent (LogInActivity.this, MainActivity.class));
+                    }
+                    else {
                         makeToastText("Sign In failed please try again!");
                     }
                 }

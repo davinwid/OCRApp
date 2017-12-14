@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "334180707866",
+    "firebase_url": "https://final-project-davinwid.firebaseio.com",
+    "project_id": "final-project-davinwid",
+    "storage_bucket": "final-project-davinwid.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334180707866:android:d3c190f37d1163ae",
+        "android_client_info": {
+          "package_name": "edu.illinois.finalproject"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "334180707866-a9sktit4pu4h91636qfjcdcnavqgmcps.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "edu.illinois.finalproject",
+            "certificate_hash": "11b2374a74ec5f1f19b0a85d003c98efde84f5a4"
+          }
+        },
+        {
+          "client_id": "334180707866-7kn3idi5eu49lqfv7u182akc9hgmos8b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6dBS1_BpEDeU5faX0e6RwyCU_VJQhvwA"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "334180707866-7kn3idi5eu49lqfv7u182akc9hgmos8b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

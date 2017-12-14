@@ -1,16 +1,20 @@
 package edu.illinois.finalproject;
 
-import android.app.ProgressDialog;
+import android.Manifest;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -18,8 +22,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -27,27 +29,22 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.util.ArrayList;
-import java.util.Random;
+import java.io.IOException;
+
 
 public class MainActivity extends AppCompatActivity {
 
+    final private static int REQUEST_IMAGE_CAPTURE = 1;
+    final private static int RESULT_LOAD_IMAGE = 2;
+    final private static int REQUEST_CAMERA_PERMISSION_GRANTED = 3;
+    final private static int REQUEST_STORAGE_PERMISSION_GRANTED = 4;
+
     private ImageButton cameraButton, uploadImageButton;
     private ImageView imagePreview;
-    private TextView uploadTextView, welcomeTextView;
-    private ProgressDialog progressDialog;
-    private Button recentSearchesButton, signOutButton;
-    final private int REQUEST_IMAGE_CAPTURE = 1;
-    final private int RESULT_LOAD_IMAGE = 2;
-
-    private ArrayList<String> imagePathArray = new ArrayList<>();
-    private String filename;
+    private TextView uploadTextView, welcomeTextView, ocrResultText, noResultText;
+    private Button signOutButton, scanImage, copyToClipBoard;
 
     private FirebaseDatabase database;
     private FirebaseAuth databaseAuth;
@@ -55,6 +52,8 @@ public class MainActivity extends AppCompatActivity {
     private DatabaseReference userRef;
     private UserProfile signedInUser;
     private String userID;
+    private Bitmap image;
+    private String imageFilePath;
 
 
     @Override
@@ -67,21 +66,20 @@ public class MainActivity extends AppCompatActivity {
         imagePreview = (ImageView) findViewById(R.id.imagePreview);
         uploadTextView = (TextView) findViewById(R.id.uploadImageTextView);
         welcomeTextView = (TextView) findViewById(R.id.welcomeMessage);
-        recentSearchesButton = (Button) findViewById(R.id.recentSearches);
+        ocrResultText = (TextView) findViewById(R.id.ocrResultText);
         signOutButton = (Button) findViewById(R.id.signOutButton);
+        copyToClipBoard = (Button) findViewById(R.id.copyToClipboard);
+        scanImage = (Button) findViewById(R.id.scanImage);
+        noResultText = (TextView) findViewById(R.id.noResultText);
 
         databaseAuth = FirebaseAuth.getInstance();
         database = FirebaseDatabase.getInstance();
         userRef = database.getReference();
         FirebaseUser user = databaseAuth.getCurrentUser();
+
+        assert user != null;
         userID = user.getUid();
 
-        recentSearchesButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent());
-            }
-        });
 
         uploadImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -93,6 +91,8 @@ public class MainActivity extends AppCompatActivity {
         cameraButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // ask for permission once again to make sure everything works
+                askPermission();
                 dispatchTakePictureIntent();
             }
         });
@@ -102,9 +102,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 FirebaseUser user = databaseAuth.getCurrentUser();
-                if (user != null) {
-                    makeToastText("Signed in as " + user.getEmail());
-                } else {
+                if (user == null) {
                     // User is signed out
                     startActivity(new Intent(MainActivity.this, LogInActivity.class));
                 }
@@ -114,19 +112,29 @@ public class MainActivity extends AppCompatActivity {
         userRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot ds : dataSnapshot.getChildren()) {
-                    signedInUser = new UserProfile();
-                    signedInUser.setName(ds.child(userID).getValue(UserProfile.class).getName());
-                    signedInUser.setUserName(ds.child(userID).getValue(UserProfile.class).getUserName());
-                    signedInUser.setEmail(ds.child(userID).getValue(UserProfile.class).getEmail());
-
-                    welcomeTextView.setText("Welcome " + signedInUser.getUserName() + "!");
+                for (DataSnapshot dataSnaphotCurrent : dataSnapshot.getChildren()) {
+                    getUserDetails(dataSnaphotCurrent);
                 }
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
 
+            }
+        });
+
+        //source https://stackoverflow.com/questions/42851810/how-to-add-copy-to-clipboard-button-in-android
+        copyToClipBoard.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // creates a button that takes in the OCR result text into the clipboard
+                String result = ocrResultText.getText().toString();
+                ClipboardManager clipboard =
+                        (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                ClipData clip = ClipData.newPlainText("OCR Result", result);
+                clipboard.setPrimaryClip(clip);
+
+                Toast.makeText(getApplicationContext(), "Text Copied", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -137,6 +145,21 @@ public class MainActivity extends AppCompatActivity {
                 databaseAuth.signOut();
             }
         });
+    }
+
+    /**
+     * Gets the user credentials from firebase and puts it in the activity
+     *
+     * @param ds data snapshot of the user credential source
+     */
+    private void getUserDetails(DataSnapshot ds) {
+        signedInUser = new UserProfile();
+        signedInUser.setName(ds.child(userID).getValue(UserProfile.class).getName());
+        signedInUser.setUserName(ds.child(userID).getValue(UserProfile.class).getUserName());
+        signedInUser.setEmail(ds.child(userID).getValue(UserProfile.class).getEmail());
+
+        makeToastText("Signed in as " + signedInUser.getEmail());
+        welcomeTextView.setText("Welcome " + signedInUser.getUserName() + "!");
     }
 
     /**
@@ -155,13 +178,30 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Source: https://www.youtube.com/watch?v=itAOotYB5Ns and
-     * https://developer.android.com/training/camera/photobasics.html
      * Intent to be sent to open the camera
+     * source: https://www.youtube.com/watch?v=itAOotYB5Ns and
+     * https://developer.android.com/training/camera/photobasics.html
      */
     private void dispatchTakePictureIntent() {
         try {
+            // initialize the intent and photo file to be created
             Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            File photoFile = null;
+
+            // try to create the image file
+            try {
+                photoFile = UtilityMethods.createImageFile();
+                imageFilePath = photoFile.getAbsolutePath();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            // set up authorities that has been set in the manifest and make a uri
+            String authorities = getApplicationContext().getPackageName() + ".provider";
+            Uri cameraIntentUri = FileProvider.getUriForFile(MainActivity.this, authorities, photoFile);
+
+            // attach the Uri object to the camera
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraIntentUri);
             if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
                 startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
             }
@@ -170,102 +210,110 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Asks the user for the permission to run the apps full functionality
+     * source: https://www.youtube.com/watch?v=Nt5GMaFUvog
+     */
+    private void askPermission() {
+        // asks the program whether the write external storage permission is granted,
+        // if not ask the user
+        if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_STORAGE_PERMISSION_GRANTED);
+        }
+        // asks the program whether the camera permission is granted,
+        // if not ask the user
+        if (ContextCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    MainActivity.REQUEST_CAMERA_PERMISSION_GRANTED);
+        }
+    }
+
+
+    /**
+     * Method that handles the intent result
+     *
+     * @param requestCode code that checks its state (RESULT_OK or not)
+     * @param resultCode  code that differs with different intent request
+     * @param data        the intent that was just ran
+     */
     @Override
     protected void onActivityResult(int requestCode, final int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK) {
-            imageSourceHandler(requestCode, data);
-        }
-        imageProcessing(resultCode);
-    }
-
-    /**
-     * Handles the request made by the user, opens the camera or upload from the gallery
-     *
-     * @param requestCode request code to identify the command
-     * @param data        intent result
-     */
-    private void imageSourceHandler(int requestCode, Intent data) {
-        switch (requestCode) {
-            case (REQUEST_IMAGE_CAPTURE):
-                // gets the resulting data
-                Bundle extras = data.getExtras();
-                Bitmap image = (Bitmap) extras.get("data");
-
-                // offsets the image orientation
-                Matrix matrix = new Matrix();
-                matrix.postRotate(90);
-                Bitmap imageNew = Bitmap.createBitmap(image, 0, 0, image.getWidth(),
-                        image.getHeight(), matrix, true);
-
-                //add to the array, take the name and sets the image into the imagePreview imageview
-                filename = saveImage(imageNew);
-                imagePathArray.add(filename);
-                imagePreview.setImageBitmap(imageNew);
-                imageProcessing(requestCode);
-                break;
-            case (RESULT_LOAD_IMAGE):
-                // if the request is to open the gallery and choose picture to upload
-                Uri imageUri = data.getData();
-                filename = imageUri.getPath();
-                imagePathArray.add(filename);
-                imagePreview.setImageURI(imageUri);
-                imageProcessing(requestCode);
-                break;
+            switch (requestCode) {
+                case (REQUEST_IMAGE_CAPTURE):
+                    // if the request is capturing the image, create the required bitmap
+                    image = UtilityMethods.getCorrectOrientedImage(imageFilePath);
+                    break;
+                case (RESULT_LOAD_IMAGE):
+                    // if the request is to open the gallery and choose picture to upload
+                    Uri imageUri = data.getData();
+                    try {
+                        // create a bitmap of the image
+                        image = MediaStore.Images.Media.
+                                getBitmap(MainActivity.this.getContentResolver(), imageUri);
+                    } catch (IOException e) {
+                        makeToastText("Image upload failed...");
+                    }
+                    break;
+            }
+            // sets the image preview and sets the layout
+            layoutProcess(image);
         }
     }
 
     /**
-     * Uploads the image and do stuff according to the way the image is uploaded
+     * Uploads the image and sets the layout according to the way the image is uploaded
      *
-     * @param resultCode the code that differs the image treatment
+     * @param image image the OCR is going to scan with
      */
-    private void imageProcessing(final int resultCode) {
-        uploadTextView.setText("Click here to search using this image!");
-        uploadTextView.setTextSize(15);
-        uploadTextView.setOnClickListener(new View.OnClickListener() {
+
+    private void layoutProcess(final Bitmap image) {
+        imagePreview.setImageBitmap(image);
+        uploadTextView.setVisibility(View.GONE);
+        scanImage.setVisibility(View.VISIBLE);
+        copyToClipBoard.setVisibility(View.GONE);
+        ocrResultText.setVisibility(View.GONE);
+        noResultText.setVisibility(View.GONE);
+
+        scanImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                progressDialog.setMessage("Uploading Image...");
-                progressDialog.show();
-
-                //get the signed in user
-                FirebaseUser user = databaseAuth.getCurrentUser();
-                String userId = user.getUid();
-
-                Uri uri = Uri.fromFile(new File(filename));
+                String ocrResult = UtilityMethods.texRecognition(image, MainActivity.this);
+                ocrResultUserInterface(ocrResult);
             }
         });
     }
 
     /**
-     * Save image into a local file
+     * Changes the user interface according to the OCR's result
      *
-     * @param finalBitmap bitmap whose file is being created
-     * @return the path to the saved file
+     * @param ocrResult String resulted from the image recognition
      */
-    private String saveImage(Bitmap finalBitmap) {
-        String root = Environment.getExternalStorageDirectory().toString();
-        File myDir = new File(root + "/saved_images");
-        myDir.mkdirs();
-        Random generator = new Random();
-        int n = 10000;
-        n = generator.nextInt(n);
-        String fname = "Image-" + n + ".jpg";
-        File file = new File(myDir, fname);
-        if (file.exists()) {
-            file.delete();
+    private void ocrResultUserInterface(String ocrResult) {
+        scanImage.setVisibility(View.GONE);
+        // empty means no text is gotten from the image
+        if (ocrResult.length() == 0) {
+            noResultText.setVisibility(View.VISIBLE);
+            // if result is less than 30 characters, show the text
+        } else if (ocrResult.length() <= 30) {
+            // initialize the state of the result page
+            ocrResultText.setVisibility(View.VISIBLE);
+            ocrResultText.setText(ocrResult);
+            copyToClipBoard.setVisibility(View.VISIBLE);
+        } else {
+            // if not then don't and ask the user to copy to clipboard to get the result
+            ocrResultText.setText(ocrResult);
+            copyToClipBoard.setVisibility(View.VISIBLE);
+            uploadTextView.setVisibility(View.VISIBLE);
+            uploadTextView.setTextSize(18);
+            uploadTextView.setText(R.string.text_too_long);
         }
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            out.flush();
-            out.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return root + "/saved_images/" + fname;
     }
 
     @Override
