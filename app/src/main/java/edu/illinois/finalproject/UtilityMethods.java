@@ -1,11 +1,14 @@
 package edu.illinois.finalproject;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.util.SparseArray;
 
 import com.google.android.gms.vision.Frame;
@@ -104,5 +107,28 @@ class UtilityMethods {
             ocrResult = String.valueOf(stringBuilder);
         }
         return ocrResult;
+    }
+
+    /**
+     * Makes a string of the real path to the file from the context it is called and the given uri
+     * @param context   context it is being called
+     * @param uri       uri object whole location needs to be found
+     * @return String result of the path uri
+     */
+    public static String getRealPathFromURI(Context context, Uri uri) {
+        String result = null;
+        String[] proj = { MediaStore.Images.Media.DATA };
+        Cursor cursor = context.getContentResolver( ).query( uri, proj, null, null, null );
+        if(cursor != null){
+            if ( cursor.moveToFirst( ) ) {
+                int column_index = cursor.getColumnIndexOrThrow( proj[0] );
+                result = cursor.getString( column_index );
+            }
+            cursor.close( );
+        }
+        if(result == null) {
+            result = "Not found";
+        }
+        return result;
     }
 }

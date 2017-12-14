@@ -253,19 +253,18 @@ public class MainActivity extends AppCompatActivity {
                 case (RESULT_LOAD_IMAGE):
                     // if the request is to open the gallery and choose picture to upload
                     Uri imageUri = data.getData();
-                    try {
-                        // create a bitmap of the image
-                        image = MediaStore.Images.Media.
-                                getBitmap(MainActivity.this.getContentResolver(), imageUri);
-                    } catch (IOException e) {
-                        makeToastText("Image upload failed...");
-                    }
+                    String realPath = UtilityMethods.getRealPathFromURI(this, imageUri);
+
+                    // create a bitmap of the image
+                    image = UtilityMethods.getCorrectOrientedImage(realPath);
                     break;
             }
             // sets the image preview and sets the layout
             layoutProcess(image);
         }
     }
+
+
 
     /**
      * Uploads the image and sets the layout according to the way the image is uploaded
