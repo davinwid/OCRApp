@@ -1,5 +1,7 @@
 package edu.illinois.finalproject;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -10,6 +12,8 @@ import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.SparseArray;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.vision.Frame;
 import com.google.android.gms.vision.text.TextBlock;
@@ -115,7 +119,7 @@ class UtilityMethods {
      * @param uri       uri object whole location needs to be found
      * @return String result of the path uri
      */
-    public static String getRealPathFromURI(Context context, Uri uri) {
+    static String getRealPathFromURI(Context context, Uri uri) {
         String result = null;
         String[] proj = { MediaStore.Images.Media.DATA };
         Cursor cursor = context.getContentResolver( ).query( uri, proj, null, null, null );
@@ -130,5 +134,16 @@ class UtilityMethods {
             result = "Not found";
         }
         return result;
+    }
+
+    static void copyToClipboard(TextView text, Context context) {
+        // creates a button that takes in the OCR result text into the clipboard
+        String result = text.getText().toString();
+        ClipboardManager clipboard =
+                (ClipboardManager) context.getSystemService(context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("OCR Result", result);
+        clipboard.setPrimaryClip(clip);
+
+        Toast.makeText(context.getApplicationContext(), "Text Copied", Toast.LENGTH_SHORT).show();
     }
 }

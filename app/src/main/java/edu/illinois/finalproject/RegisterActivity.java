@@ -17,6 +17,8 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.ArrayList;
+
 public class RegisterActivity extends AppCompatActivity {
 
     private EditText emailSignUp, passwordSignUp,
@@ -94,19 +96,20 @@ public class RegisterActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                     @Override
                     public void onComplete(@NonNull Task<AuthResult> task) {
-                        makeToastText("Successfully Registered!");
                         registerButton.setClickable(false);
 
                         // add new user info to database
                         DatabaseReference userRef = database.getReference("users");
 
                         // makes a new map based on the user profile
-                        UserProfile newUser = new UserProfile(nameText, userName, email);
+                        UserProfile newUser = new UserProfile(nameText, userName, email,
+                                new ArrayList<String>());
 
                         // adds the new user to database and local array
                         userRef.child(firebaseAuth.getCurrentUser().getUid()).setValue(newUser);
 
                         // signal the end of the process
+                        makeToastText("Successfully Registered!");
                         progressDialog.hide();
                         startActivity(new Intent(RegisterActivity.this, LogInActivity.class));
 

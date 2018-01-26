@@ -6,16 +6,18 @@ import java.util.ArrayList;
  * Created by Davinwid on 12/6/2017.
  */
 
-public class UserProfile {
+class UserProfile {
 
     private String name;
     private String email;
     private String userName;
+    private ArrayList<String> recentSearches;
 
-    public UserProfile(String name, String userName, String email) {
+    public UserProfile(String name, String userName, String email, ArrayList<String> recentSearches) {
         this.name = name;
         this.userName = userName;
         this.email = email;
+        this.recentSearches = recentSearches;
     }
 
     UserProfile() {
@@ -33,6 +35,10 @@ public class UserProfile {
         return email;
     }
 
+    public ArrayList<String> getRecentSearches() {
+        return recentSearches;
+    }
+
     public void setName(String name) {
         this.name = name;
     }
@@ -43,5 +49,9 @@ public class UserProfile {
 
     void setUserName(String userName) {
         this.userName = userName;
+    }
+
+    public void setRecentSearches(ArrayList<String> recentSearches) {
+        this.recentSearches = recentSearches;
     }
 }

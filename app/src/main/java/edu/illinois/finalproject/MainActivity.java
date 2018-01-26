@@ -1,20 +1,17 @@
 package edu.illinois.finalproject;
 
 import android.Manifest;
-import android.content.ClipData;
-import android.content.ClipboardManager;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
@@ -44,7 +41,8 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton cameraButton, uploadImageButton;
     private ImageView imagePreview;
     private TextView uploadTextView, welcomeTextView, ocrResultText, noResultText;
-    private Button signOutButton, scanImage, copyToClipBoard;
+    private Button signOutButton, scanImage, copyToClipBoard, resultPage;
+    private Toolbar toolbar;
 
     private FirebaseDatabase database;
     private FirebaseAuth databaseAuth;
@@ -53,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
     private UserProfile signedInUser;
     private String userID;
     private Bitmap image;
-    private String imageFilePath;
+    private static String imageFilePath;
 
 
     @Override
@@ -71,15 +69,16 @@ public class MainActivity extends AppCompatActivity {
         copyToClipBoard = (Button) findViewById(R.id.copyToClipboard);
         scanImage = (Button) findViewById(R.id.scanImage);
         noResultText = (TextView) findViewById(R.id.noResultText);
+        resultPage = (Button) findViewById(R.id.resultPage);
+        toolbar = (Toolbar) findViewById(R.id.toolbar);
 
         databaseAuth = FirebaseAuth.getInstance();
         database = FirebaseDatabase.getInstance();
         userRef = database.getReference();
         FirebaseUser user = databaseAuth.getCurrentUser();
 
-        assert user != null;
         userID = user.getUid();
-
+        setSupportActionBar(toolbar);
 
         uploadImageButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -100,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
         databaseAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+            public void onAuthStateChanged(FirebaseAuth firebaseAuth) {
                 FirebaseUser user = databaseAuth.getCurrentUser();
                 if (user == null) {
                     // User is signed out
@@ -127,17 +126,19 @@ public class MainActivity extends AppCompatActivity {
         copyToClipBoard.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // creates a button that takes in the OCR result text into the clipboard
-                String result = ocrResultText.getText().toString();
-                ClipboardManager clipboard =
-                        (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData clip = ClipData.newPlainText("OCR Result", result);
-                clipboard.setPrimaryClip(clip);
-
-                Toast.makeText(getApplicationContext(), "Text Copied", Toast.LENGTH_SHORT).show();
+                UtilityMethods.copyToClipboard(ocrResultText, MainActivity.this);
             }
         });
 
+        resultPage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent detailedPage = new Intent(MainActivity.this, DetailedViewPage.class);
+                detailedPage.putExtra("result" , ocrResultText.getText().toString());
+                detailedPage.putExtra("memory location", imageFilePath);
+                startActivity(detailedPage);
+            }
+        });
 
         signOutButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -146,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
 
     /**
      * Gets the user credentials from firebase and puts it in the activity
@@ -253,10 +255,10 @@ public class MainActivity extends AppCompatActivity {
                 case (RESULT_LOAD_IMAGE):
                     // if the request is to open the gallery and choose picture to upload
                     Uri imageUri = data.getData();
-                    String realPath = UtilityMethods.getRealPathFromURI(this, imageUri);
+                    imageFilePath = UtilityMethods.getRealPathFromURI(this, imageUri);
 
                     // create a bitmap of the image
-                    image = UtilityMethods.getCorrectOrientedImage(realPath);
+                    image = UtilityMethods.getCorrectOrientedImage(imageFilePath);
                     break;
             }
             // sets the image preview and sets the layout
@@ -265,13 +267,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     /**
      * Uploads the image and sets the layout according to the way the image is uploaded
      *
      * @param image image the OCR is going to scan with
      */
-
     private void layoutProcess(final Bitmap image) {
         imagePreview.setImageBitmap(image);
         uploadTextView.setVisibility(View.GONE);
@@ -279,6 +279,7 @@ public class MainActivity extends AppCompatActivity {
         copyToClipBoard.setVisibility(View.GONE);
         ocrResultText.setVisibility(View.GONE);
         noResultText.setVisibility(View.GONE);
+        resultPage.setVisibility(View.GONE);
 
         scanImage.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -300,13 +301,15 @@ public class MainActivity extends AppCompatActivity {
         if (ocrResult.length() == 0) {
             noResultText.setVisibility(View.VISIBLE);
             // if result is less than 30 characters, show the text
-        } else if (ocrResult.length() <= 30) {
+        } else if (ocrResult.length() <= 15) {
             // initialize the state of the result page
+            resultPage.setVisibility(View.VISIBLE);
             ocrResultText.setVisibility(View.VISIBLE);
             ocrResultText.setText(ocrResult);
             copyToClipBoard.setVisibility(View.VISIBLE);
         } else {
             // if not then don't and ask the user to copy to clipboard to get the result
+            resultPage.setVisibility(View.VISIBLE);
             ocrResultText.setText(ocrResult);
             copyToClipBoard.setVisibility(View.VISIBLE);
             uploadTextView.setVisibility(View.VISIBLE);
@@ -314,6 +317,7 @@ public class MainActivity extends AppCompatActivity {
             uploadTextView.setText(R.string.text_too_long);
         }
     }
+
 
     @Override
     public void onStart() {
